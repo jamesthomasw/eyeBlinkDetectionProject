@@ -1,12 +1,16 @@
 import tensorflow as tf
-from tensorflow.keras import layers
+import numpy as np
+import os
+import cv2
 import matplotlib.pyplot as plt
 
-
-def create_mobnet(hp_dropout_rate, hp_learning_rate):
-
-    model = tf.keras.applications.MobileNet(dropout=hp_dropout_rate)
-
+def create_model():
+    
+    model = tf.keras.applications.MobileNet(include_top=False,
+                                            input_shape=(128, 128, 3),
+                                            weights='imagenet',
+                                            dropout=0.3)
+    
     base_input = model.layers[0].input
     base_output = model.layers[-4].output
 
@@ -18,37 +22,11 @@ def create_mobnet(hp_dropout_rate, hp_learning_rate):
 
     model.compile(
         loss='binary_crossentropy',
-        optimizer=tf.keras.optimizers.Adam(learning_rate=hp_learning_rate),
+        optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
         metrics=['accuracy']
     )
+    
     return model
-
-
-def load_train_data():
-    train_data = tf.keras.preprocessing.image_dataset_from_directory(
-        'p80_eye_dataset',
-        label_mode='binary',
-        validation_split=0.2,
-        subset='training',
-        seed=123,
-        batch_size=64,
-        image_size=(224, 224)
-    )
-    return train_data
-
-
-def load_val_data():
-    val_data = tf.keras.preprocessing.image_dataset_from_directory(
-        'p80_eye_dataset',
-        label_mode='binary',
-        validation_split=0.2,
-        subset='validation',
-        seed=123,
-        batch_size=64,
-        image_size=(224, 224)
-    )
-    return val_data
-
 
 gpus = tf.config.experimental.list_physical_devices('GPU')
 if gpus:
@@ -57,20 +35,47 @@ if gpus:
     except RuntimeError as e:
         print(e)
 
-train_data = load_train_data()
-val_data = load_val_data()
+source_dir = '/Users/James Thomas/VScodeProjects/Eye Blink Detection/CEW_Eyes_Dataset/'
+categories = ['ClosedEyes', 'OpenEyes']
+img_size = 128
+eye_data = []
 
-normalize_layer = tf.keras.layers.experimental.preprocessing.Rescaling(1./255)
-normalized_train_data = train_data.map(lambda x, y: (normalize_layer(x), y))
-normalized_val_data = val_data.map(lambda x, y: (normalize_layer(x), y))
+for category in categories:
+    path = os.path.join(source_dir, category)
+    class_num = categories.index(category)
+    for img in os.listdir(path): 
+        try:
+            image = cv2.imread(os.path.join(path, img), cv2.IMREAD_GRAYSCALE)
+            gray = cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
+            gray_resized = cv2.resize(gray, (img_size, img_size))
+            eye_data.append([gray_resized, class_num])
+        except Exception as e:
+            print(e)
 
-dropout = 0.0
-learning_rate = 0.0007
+import random
+random.shuffle(eye_data)
 
-model = create_mobnet(hp_dropout_rate=dropout, hp_learning_rate=learning_rate)
+X = []
+y = []
 
-model_checkpoint = tf.keras.callbacks.ModelCheckpoint(
-    "saved_model/mobnet_drowsy_v8-10.h5",
+for image, label in eye_data:
+    X.append(image)
+    y.append(label)
+    
+X = np.array(X).reshape(-1, img_size, img_size, 3)
+X = X/255.0
+y = np.array(y)
+
+from sklearn.model_selection import train_test_split
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=True, random_state=42)
+
+model = create_model()
+
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
+
+checkpoint = ModelCheckpoint(
+    "saved_model/mobilenet_128_v2.h5",
     monitor='val_accuracy',
     verbose=1,
     save_best_only=True,
@@ -78,7 +83,7 @@ model_checkpoint = tf.keras.callbacks.ModelCheckpoint(
     mode='auto'
 )
 
-early_stop = tf.keras.callbacks.EarlyStopping(
+early_stop = EarlyStopping(
     monitor='val_accuracy',
     restore_best_weights=True,
     min_delta=0,
@@ -88,20 +93,13 @@ early_stop = tf.keras.callbacks.EarlyStopping(
 )
 
 history = model.fit(
-    normalized_train_data,
-    validation_data=normalized_val_data,
-    epochs=30,
-    callbacks=[model_checkpoint, early_stop]
+    x=X_train,
+    y=y_train,
+    validation_data=(X_test, y_test),
+    batch_size=32,
+    epochs=20,
+    callbacks=[checkpoint, early_stop]
 )
-
-model.save_weights("saved_model/mobnet_drowsy_v8-10_weights.h5")
-
-loss, acc = model.evaluate(normalized_val_data, verbose=2)
-print(f"""
-Hold-out cross validation
-Loss: {loss}
-Accuracy: {100*acc}%
-""")
 
 plt.plot(history.history['accuracy'])
 plt.plot(history.history['val_accuracy'])
@@ -109,7 +107,7 @@ plt.title('Training Accuracy')
 plt.ylabel('Accuracy')
 plt.xlabel('Epochs')
 plt.legend(['train_accuracy', 'val_accuracy'], loc='upper left')
-plt.savefig('saved_figure/plot_8-10a.png', dpi=300, bbox_inches='tight')
+plt.savefig('saved_figure/plot_128-2a.png', dpi=300, bbox_inches='tight')
 plt.show()
 
 plt.plot(history.history['loss'])
@@ -118,5 +116,5 @@ plt.title('Training Loss')
 plt.ylabel('Loss')
 plt.xlabel('Epochs')
 plt.legend(['train_loss', 'val_loss'], loc='lower left')
-plt.savefig('saved_figure/plot_8-10b.png', dpi=300, bbox_inches='tight')
+plt.savefig('saved_figure/plot_128-2b.png', dpi=300, bbox_inches='tight')
 plt.show()
