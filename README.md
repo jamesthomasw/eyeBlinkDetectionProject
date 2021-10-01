@@ -7,7 +7,7 @@
 https://user-images.githubusercontent.com/48656293/135448479-7054aeb3-ff33-4e4f-b502-1b21fa0480f8.mp4
 
 
-
+<!-- 
 ## Proposed Algorithm for Eye Blink Detection
 ![proposed-algorithm-english](https://user-images.githubusercontent.com/48656293/135438500-20649408-8ad6-4a61-8d9b-ea635cce549b.jpg)
 
@@ -31,4 +31,4 @@ tensorflow.keras.applications.mobilenet.MobileNet()
 
 ## References
 1. F.Song, X.Tan, X.Liu and S.Chen, Eyes Closeness Detection from Still Images with Multi-scale Histograms of Principal Oriented Gradients, Pattern Recognition, 2014.
-2. Navneet Dalal, Bill Triggs. Histograms of Oriented Gradients for Human Detection. International Conference on Computer Vision & Pattern Recognition (CVPR ’05), Jun 2005, San Diego, United States. pp.886–893, [10.1109/CVPR.2005.177](https://ieeexplore.ieee.org/document/1467360). [inria-00548512](https://hal.inria.fr/inria-00548512)
+2. Navneet Dalal, Bill Triggs. Histograms of Oriented Gradients for Human Detection. International Conference on Computer Vision & Pattern Recognition (CVPR ’05), Jun 2005, San Diego, United States. pp.886–893, [10.1109/CVPR.2005.177](https://ieeexplore.ieee.org/document/1467360). [inria-00548512](https://hal.inria.fr/inria-00548512) -->
